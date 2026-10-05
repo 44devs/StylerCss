@@ -1,1 +1,22 @@
+.brutal {
+  padding: 15px 26px;
+  border: 3px solid #222;
+  border-radius: 14px;
+  background: #c9f27b;
+  color: #222;
+  font-weight: 900;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 6px 6px 0 #222;
+  transition: 0.15s;
+}
 
+.brutal:hover {
+  transform: translate(3px, 3px);
+  box-shadow: 3px 3px 0 #222;
+}
+
+.brutal:active {
+  transform: translate(6px, 6px);
+  box-shadow: none;
+}
