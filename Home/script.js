@@ -2,7 +2,7 @@ const CONFIG = {
   owner: "44devs",
   repo: "StylerCss",
   branch: "main",
-  root: "CodesIThink",
+  root: "../CodesIThink",
   categories: [
     { folder: "Buttons", label: "buttons" },
     { folder: "Loaders", label: "loaders" },
@@ -10,7 +10,7 @@ const CONFIG = {
     { folder: "Toggles", label: "toggles" },
     { folder: "Cards", label: "cards" }
   ],
-  htmlExtensions: [".html", ".htm", ".style", ".js"],
+  htmlExtensions: [".html", ".htm", ".style"],
   cssExtensions: [".css"],
   jsExtensions: [".js"]
 };
@@ -49,7 +49,10 @@ function apiUrl(path) {
 
 async function listDir(path) {
   const res = await fetch(apiUrl(path));
-  if (!res.ok) throw new Error("Cannot list " + path);
+  if (!res.ok) {
+    if (res.status === 404) return [];
+    throw new Error("Cannot list " + path);
+  }
   return res.json();
 }
 
@@ -135,6 +138,16 @@ async function loadCategory(cat) {
       js: js
     });
   }
+}
+
+function injectComponentStyles() {
+  const existing = document.getElementById("stylercss-components");
+  if (existing) existing.remove();
+  
+  const style = document.createElement("style");
+  style.id = "stylercss-components";
+  style.textContent = components.map(function (c) { return c.css; }).join("\n\n");
+  document.head.appendChild(style);
 }
 
 function showLoading() {
@@ -354,6 +367,7 @@ async function init() {
   for (const cat of CONFIG.categories) {
     await loadCategory(cat);
   }
+  injectComponentStyles();
   draw();
 }
 
