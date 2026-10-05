@@ -1,1 +1,82 @@
-<h1>In Development...</h1>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StylerCss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand" id="brand">
+      <span class="brand-s">S</span>
+      <span class="brand-name">Styler<em>Css</em></span>
+    </div>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <circle cx="11" cy="11" r="7"/>
+        <path d="m20 20-3.7-3.7"/>
+      </svg>
+      <input id="q" type="search" placeholder="Search  Styles..." autocomplete="off">
+    </div>
+
+    <nav class="nav">
+      <button class="nav-btn active" id="homeBtn">Home</button>
+      <button class="nav-btn" id="infoBtn">Info</button>
+      <button class="mode" id="mode" aria-label="Toggle theme"></button>
+    </nav>
+  </div>
+</header>
+
+<main class="main">
+  <section class="view" id="homeView">
+    <div class="filters" id="filters">
+      <button class="pill on" data-cat="all">All</button>
+      <button class="pill" data-cat="buttons">Buttons</button>
+      <button class="pill" data-cat="loaders">Loaders</button>
+      <button class="pill" data-cat="inputs">Inputs</button>
+      <button class="pill" data-cat="toggles">Toggles</button>
+      <button class="pill" data-cat="cards">Cards</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="view info" id="infoView" hidden>
+    <h1>Information</h1>
+    <hr>
+    <p>Hey Yall, Everything Made By Me 44devs (Nico) will be here unless there is a tag <strong>[NSM]</strong>, That Stands for <strong>"Not Self Made"</strong> and Credits Will Be Given.</p>
+    <p class="dim">You dont need to add any credits to use after all do what you want Lol, although i do apprichate Credits.</p>
+    <p class="dim">Anyways if yall have any project ideas or styles or any issue then Please Contact Me at <a href="mailto:nixonuxi44@gmail.com">nixonuxi44@gmail.com</a>.</p>
+    <p>Anyway, Have Fun!</p>
+  </section>
+</main>
+
+<div class="sheet" id="sheet">
+  <div class="modal" id="modal">
+    <button class="close" id="close">✕</button>
+    <div class="modal-stage" id="mstage"></div>
+    <div class="modal-side">
+      <div class="modal-head">
+        <h2 id="mtitle">Title</h2>
+        <span class="tag" id="mcat">buttons</span>
+      </div>
+      <div class="tabs">
+        <button class="tab on" data-t="html">HTML</button>
+        <button class="tab" data-t="css">CSS</button>
+        <button class="tab" data-t="js">JS</button>
+        <button class="modal-grab" id="mgrab">Copy</button>
+      </div>
+      <pre><code id="code"></code></pre>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
