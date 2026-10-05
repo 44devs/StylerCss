@@ -43,47 +43,17 @@ const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>';
 const moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a6.9 6.9 0 1 0 11.3 11.3Z"/></svg>';
 
-const apiCache = {};
-
-function apiUrl(path) {
-  return "https://api.github.com/repos/" + CONFIG.owner + "/" + CONFIG.repo + "/contents/" + path + "?ref=" + CONFIG.branch;
-}
-
-async function listDir(path) {
-  if (apiCache[path]) {
-    return apiCache[path];
-  }
-  const res = await fetch(apiUrl(path));
-  if (!res.ok) {
-    if (res.status === 404) {
-      apiCache[path] = [];
-      return [];
-    }
-    if (res.status === 403) {
-      console.error("GitHub API rate limit hit. Please wait an hour.");
-      return [];
-    }
-    throw new Error("Cannot list " + path);
-  }
+async function fetchFileList() {
+  const res = await fetch("https://data.jsdelivr.com/v1/package/gh/" + CONFIG.owner + "/" + CONFIG.repo + "@" + CONFIG.branch + "/flat");
+  if (!res.ok) throw new Error("Cannot fetch file list");
   const data = await res.json();
-  apiCache[path] = data;
-  return data;
+  return data.files.map(function (f) { return f.name; });
 }
 
 async function fetchText(url) {
-  const res = await fetch(url + "?t=" + Date.now());
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Cannot fetch " + url);
   return res.text();
-}
-
-function pickFile(files, extensions) {
-  for (const ext of extensions) {
-    const found = files.find(function (f) {
-      return f.name.toLowerCase().endsWith(ext);
-    });
-    if (found) return found;
-  }
-  return null;
 }
 
 function cleanHtml(raw) {
@@ -95,62 +65,75 @@ function cleanHtml(raw) {
   return { html: body.trim(), inlineCss: styles };
 }
 
-async function loadCategory(cat) {
-  let entries;
+async function loadComponents() {
+  let allFiles;
   try {
-    entries = await listDir(CONFIG.root + "/" + cat.folder);
+    allFiles = await fetchFileList();
   } catch (e) {
+    console.error("Could not reach jsDelivr:", e);
     return;
   }
 
-  const folders = entries.filter(function (e) { return e.type === "dir"; });
-
-  for (const folder of folders) {
-    let files;
-    try {
-      files = await listDir(CONFIG.root + "/" + cat.folder + "/" + folder.name);
-    } catch (e) {
-      continue;
-    }
-
-    const htmlFile = pickFile(files, CONFIG.htmlExtensions);
-    const cssFile = pickFile(files, CONFIG.cssExtensions);
-    const jsFile = pickFile(files, CONFIG.jsExtensions);
-
-    let html = "";
-    let inlineCss = "";
-    if (htmlFile) {
-      const rawHtml = await fetchText(htmlFile.download_url);
-      const cleaned = cleanHtml(rawHtml);
-      if (typeof cleaned === "object") {
-        html = cleaned.html;
-        inlineCss = cleaned.inlineCss;
-      } else {
-        html = cleaned;
-      }
-    }
-
-    let css = "";
-    if (cssFile) {
-      css = (await fetchText(cssFile.download_url)).trim();
-    }
-    if (inlineCss) {
-      css = (css ? css + "\n\n" : "") + inlineCss;
-    }
-
-    let js = "";
-    if (jsFile) {
-      js = (await fetchText(jsFile.download_url)).trim();
-    }
-
-    components.push({
-      title: folder.name,
-      cat: cat.label,
-      tags: [cat.label, folder.name.toLowerCase()],
-      html: html,
-      css: css,
-      js: js
+  for (const cat of CONFIG.categories) {
+    const prefix = "/" + CONFIG.root + "/" + cat.folder + "/";
+    const catFiles = allFiles.filter(function (f) {
+      return f.indexOf(prefix) === 0 && f.indexOf("/", prefix.length) > -1;
     });
+
+    const folderMap = {};
+    for (const file of catFiles) {
+      const relative = file.substring(prefix.length);
+      const parts = relative.split("/");
+      if (parts.length < 2) continue;
+      const folderName = parts[0];
+      const fileName = parts[1];
+      if (!folderMap[folderName]) folderMap[folderName] = [];
+      folderMap[folderName].push(fileName);
+    }
+
+    for (const folderName in folderMap) {
+      const files = folderMap[folderName];
+      const htmlFile = files.find(function (f) { return CONFIG.htmlExtensions.some(function (e) { return f.toLowerCase().endsWith(e); }); });
+      const cssFile = files.find(function (f) { return CONFIG.cssExtensions.some(function (e) { return f.toLowerCase().endsWith(e); }); });
+      const jsFile = files.find(function (f) { return CONFIG.jsExtensions.some(function (e) { return f.toLowerCase().endsWith(e); }); });
+
+      const baseUrl = "https://cdn.jsdelivr.net/gh/" + CONFIG.owner + "/" + CONFIG.repo + "@" + CONFIG.branch + "/" + CONFIG.root + "/" + cat.folder + "/" + folderName + "/";
+
+      let html = "";
+      let inlineCss = "";
+      if (htmlFile) {
+        const rawHtml = await fetchText(baseUrl + htmlFile);
+        const cleaned = cleanHtml(rawHtml);
+        if (typeof cleaned === "object") {
+          html = cleaned.html;
+          inlineCss = cleaned.inlineCss;
+        } else {
+          html = cleaned;
+        }
+      }
+
+      let css = "";
+      if (cssFile) {
+        css = (await fetchText(baseUrl + cssFile)).trim();
+      }
+      if (inlineCss) {
+        css = (css ? css + "\n\n" : "") + inlineCss;
+      }
+
+      let js = "";
+      if (jsFile) {
+        js = (await fetchText(baseUrl + jsFile)).trim();
+      }
+
+      components.push({
+        title: folderName,
+        cat: cat.label,
+        tags: [cat.label, folderName.toLowerCase()],
+        html: html,
+        css: css,
+        js: js
+      });
+    }
   }
 }
 
@@ -385,9 +368,7 @@ mode.addEventListener("click", function () {
 
 async function init() {
   showLoading();
-  for (const cat of CONFIG.categories) {
-    await loadCategory(cat);
-  }
+  await loadComponents();
   injectComponentStyles();
   draw();
 }
