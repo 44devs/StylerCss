@@ -1,0 +1,360 @@
+const CONFIG = {
+  owner: "44devs",
+  repo: "StylerCss",
+  branch: "main",
+  root: "CodesIThink",
+  categories: [
+    { folder: "Buttons", label: "buttons" },
+    { folder: "Loaders", label: "loaders" },
+    { folder: "Inputs", label: "inputs" },
+    { folder: "Toggles", label: "toggles" },
+    { folder: "Cards", label: "cards" }
+  ],
+  htmlExtensions: [".html", ".htm", ".style", ".js"],
+  cssExtensions: [".css"],
+  jsExtensions: [".js"]
+};
+
+const grid = document.getElementById("grid");
+const q = document.getElementById("q");
+const filters = document.getElementById("filters");
+const sheet = document.getElementById("sheet");
+const modal = document.getElementById("modal");
+const mstage = document.getElementById("mstage");
+const mtitle = document.getElementById("mtitle");
+const mcat = document.getElementById("mcat");
+const code = document.getElementById("code");
+const mgrab = document.getElementById("mgrab");
+const mode = document.getElementById("mode");
+const homeBtn = document.getElementById("homeBtn");
+const infoBtn = document.getElementById("infoBtn");
+const homeView = document.getElementById("homeView");
+const infoView = document.getElementById("infoView");
+const brand = document.getElementById("brand");
+
+let components = [];
+let active = null;
+let tab = "html";
+let view = "home";
+let currentCategory = "all";
+
+const copyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V5.5A2.5 2.5 0 0 1 7.5 3H17"/></svg>';
+const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+const sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>';
+const moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a6.9 6.9 0 1 0 11.3 11.3Z"/></svg>';
+
+function apiUrl(path) {
+  return "https://api.github.com/repos/" + CONFIG.owner + "/" + CONFIG.repo + "/contents/" + path + "?ref=" + CONFIG.branch;
+}
+
+async function listDir(path) {
+  const res = await fetch(apiUrl(path));
+  if (!res.ok) throw new Error("Cannot list " + path);
+  return res.json();
+}
+
+async function fetchText(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Cannot fetch " + url);
+  return res.text();
+}
+
+function pickFile(files, extensions) {
+  for (const ext of extensions) {
+    const found = files.find(function (f) {
+      return f.name.toLowerCase().endsWith(ext);
+    });
+    if (found) return found;
+  }
+  return null;
+}
+
+function cleanHtml(raw) {
+  const hasDoc = /<html[\s>]/i.test(raw) || /<body[\s>]/i.test(raw);
+  if (!hasDoc) return raw.trim();
+  const doc = new DOMParser().parseFromString(raw, "text/html");
+  const styles = Array.from(doc.querySelectorAll("style")).map(function (s) { return s.textContent; }).join("\n");
+  const body = doc.body ? doc.body.innerHTML : raw;
+  return { html: body.trim(), inlineCss: styles };
+}
+
+async function loadCategory(cat) {
+  let entries;
+  try {
+    entries = await listDir(CONFIG.root + "/" + cat.folder);
+  } catch (e) {
+    return;
+  }
+
+  const folders = entries.filter(function (e) { return e.type === "dir"; });
+
+  for (const folder of folders) {
+    let files;
+    try {
+      files = await listDir(CONFIG.root + "/" + cat.folder + "/" + folder.name);
+    } catch (e) {
+      continue;
+    }
+
+    const htmlFile = pickFile(files, CONFIG.htmlExtensions);
+    const cssFile = pickFile(files, CONFIG.cssExtensions);
+    const jsFile = pickFile(files, CONFIG.jsExtensions);
+
+    let html = "";
+    let inlineCss = "";
+    if (htmlFile) {
+      const rawHtml = await fetchText(htmlFile.download_url);
+      const cleaned = cleanHtml(rawHtml);
+      if (typeof cleaned === "object") {
+        html = cleaned.html;
+        inlineCss = cleaned.inlineCss;
+      } else {
+        html = cleaned;
+      }
+    }
+
+    let css = "";
+    if (cssFile) {
+      css = (await fetchText(cssFile.download_url)).trim();
+    }
+    if (inlineCss) {
+      css = (css ? css + "\n\n" : "") + inlineCss;
+    }
+
+    let js = "";
+    if (jsFile) {
+      js = (await fetchText(jsFile.download_url)).trim();
+    }
+
+    components.push({
+      title: folder.name,
+      cat: cat.label,
+      tags: [cat.label, folder.name.toLowerCase()],
+      html: html,
+      css: css,
+      js: js
+    });
+  }
+}
+
+function showLoading() {
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div>Loading components...</div>';
+}
+
+function draw() {
+  grid.innerHTML = "";
+
+  if (components.length === 0) {
+    grid.innerHTML = '<div class="none"><b>No components yet</b></div>';
+    return;
+  }
+
+  const filtered = components.filter(function (item) {
+    const catOk = currentCategory === "all" || item.cat === currentCategory;
+    const term = q.value.trim().toLowerCase();
+    const textOk = !term ||
+      item.title.toLowerCase().indexOf(term) > -1 ||
+      item.cat.indexOf(term) > -1 ||
+      (item.tags && item.tags.some(function (t) { return t.indexOf(term) > -1; }));
+    return catOk && textOk;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="none"><b>Nothing found</b>Try another word or category.</div>';
+    return;
+  }
+
+  filtered.forEach(function (item, i) {
+    const card = document.createElement("article");
+    card.className = "tile";
+    card.style.animationDelay = (i * 35) + "ms";
+    card.innerHTML =
+      '<div class="stage">' + item.html + '</div>' +
+      '<div class="tile-foot">' +
+        '<div class="tile-meta">' +
+          '<h3>' + item.title + '</h3>' +
+          '<span class="tag">' + item.cat + '</span>' +
+        '</div>' +
+        '<button class="grab" aria-label="Copy">' + copyIcon + '</button>' +
+      '</div>';
+
+    card.querySelector(".stage").addEventListener("click", function () {
+      openModal(item);
+    });
+
+    const grab = card.querySelector(".grab");
+    grab.addEventListener("click", function (e) {
+      e.stopPropagation();
+      put(item.html + "\n\n" + item.css);
+      grab.innerHTML = checkIcon;
+      grab.classList.add("ok");
+      setTimeout(function () {
+        grab.innerHTML = copyIcon;
+        grab.classList.remove("ok");
+      }, 1300);
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+filters.addEventListener("click", function (e) {
+  const b = e.target.closest(".pill");
+  if (!b) return;
+  filters.querySelectorAll(".pill").forEach(function (p) { p.classList.remove("on"); });
+  b.classList.add("on");
+  currentCategory = b.dataset.cat;
+  draw();
+});
+
+q.addEventListener("input", draw);
+
+function showView(v) {
+  if (v === view) return;
+  view = v;
+  if (v === "home") {
+    infoView.hidden = true;
+    homeView.hidden = false;
+    homeView.style.animation = "none";
+    void homeView.offsetWidth;
+    homeView.style.animation = "";
+    homeBtn.classList.add("active");
+    infoBtn.classList.remove("active");
+  } else {
+    homeView.hidden = true;
+    infoView.hidden = false;
+    infoView.style.animation = "none";
+    void infoView.offsetWidth;
+    infoView.style.animation = "";
+    infoBtn.classList.add("active");
+    homeBtn.classList.remove("active");
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+homeBtn.addEventListener("click", function () {
+  if (view === "home") {
+    location.reload();
+  } else {
+    showView("home");
+  }
+});
+
+infoBtn.addEventListener("click", function () {
+  showView("info");
+});
+
+brand.addEventListener("click", function () {
+  if (view === "home") {
+    location.reload();
+  } else {
+    showView("home");
+  }
+});
+
+function openModal(item) {
+  active = item;
+  mstage.innerHTML = item.html;
+  mtitle.textContent = item.title;
+  mcat.textContent = item.cat;
+  setTab("html");
+  sheet.classList.add("open");
+  document.body.style.overflow = "hidden";
+  if (item.js) {
+    const oldScript = mstage.querySelector("script");
+    if (oldScript) oldScript.remove();
+    const script = document.createElement("script");
+    script.textContent = item.js;
+    mstage.appendChild(script);
+  }
+}
+
+function shut() {
+  sheet.classList.remove("open");
+  document.body.style.overflow = "";
+  active = null;
+}
+
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll(".tab").forEach(function (el) {
+    el.classList.toggle("on", el.dataset.t === t);
+  });
+  if (!active) return;
+  if (t === "html") code.textContent = active.html || "No HTML provided.";
+  else if (t === "css") code.textContent = active.css || "No CSS provided.";
+  else if (t === "js") code.textContent = active.js || "No JavaScript provided.";
+}
+
+document.querySelectorAll(".tab").forEach(function (el) {
+  el.addEventListener("click", function () { setTab(el.dataset.t); });
+});
+
+document.getElementById("close").addEventListener("click", shut);
+sheet.addEventListener("click", function (e) { if (e.target === sheet) shut(); });
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && sheet.classList.contains("open")) shut();
+});
+
+mgrab.addEventListener("click", function () {
+  if (!active) return;
+  let output = "";
+  if (tab === "html") output = active.html;
+  else if (tab === "css") output = active.css;
+  else if (tab === "js") output = active.js;
+  put(output);
+  mgrab.textContent = "Copied!";
+  mgrab.classList.add("ok");
+  setTimeout(function () {
+    mgrab.textContent = "Copy";
+    mgrab.classList.remove("ok");
+  }, 1300);
+});
+
+function put(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(function () { fallback(text); });
+  } else {
+    fallback(text);
+  }
+}
+
+function fallback(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function paintMode(t) {
+  mode.innerHTML = t === "dark" ? moonIcon : sunIcon;
+}
+
+mode.addEventListener("click", function () {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  paintMode(next);
+  try { localStorage.setItem("stylercss-theme", next); } catch (e) {}
+});
+
+(function () {
+  let saved = null;
+  try { saved = localStorage.getItem("stylercss-theme"); } catch (e) {}
+  const t = saved || "dark";
+  document.documentElement.dataset.theme = t;
+  paintMode(t);
+})();
+
+async function init() {
+  showLoading();
+  for (const cat of CONFIG.categories) {
+    await loadCategory(cat);
+  }
+  draw();
+}
+
+init();
