@@ -2,7 +2,7 @@ const CONFIG = {
   owner: "44devs",
   repo: "StylerCss",
   branch: "main",
-  root: "../CodesIThink",
+  root: "CodesIThink",
   categories: [
     { folder: "Buttons", label: "buttons" },
     { folder: "Loaders", label: "loaders" },
@@ -43,21 +43,35 @@ const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>';
 const moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a6.9 6.9 0 1 0 11.3 11.3Z"/></svg>';
 
+const apiCache = {};
+
 function apiUrl(path) {
   return "https://api.github.com/repos/" + CONFIG.owner + "/" + CONFIG.repo + "/contents/" + path + "?ref=" + CONFIG.branch;
 }
 
 async function listDir(path) {
+  if (apiCache[path]) {
+    return apiCache[path];
+  }
   const res = await fetch(apiUrl(path));
   if (!res.ok) {
-    if (res.status === 404) return [];
+    if (res.status === 404) {
+      apiCache[path] = [];
+      return [];
+    }
+    if (res.status === 403) {
+      console.error("GitHub API rate limit hit. Please wait an hour.");
+      return [];
+    }
     throw new Error("Cannot list " + path);
   }
-  return res.json();
+  const data = await res.json();
+  apiCache[path] = data;
+  return data;
 }
 
 async function fetchText(url) {
-  const res = await fetch(url);
+  const res = await fetch(url + "?t=" + Date.now());
   if (!res.ok) throw new Error("Cannot fetch " + url);
   return res.text();
 }
@@ -144,9 +158,16 @@ function injectComponentStyles() {
   const existing = document.getElementById("stylercss-components");
   if (existing) existing.remove();
   
+  let allCss = "";
+  components.forEach(function (c) {
+    if (c.css) allCss += c.css + "\n\n";
+  });
+  
+  if (!allCss) return;
+  
   const style = document.createElement("style");
   style.id = "stylercss-components";
-  style.textContent = components.map(function (c) { return c.css; }).join("\n\n");
+  style.appendChild(document.createTextNode(allCss));
   document.head.appendChild(style);
 }
 
