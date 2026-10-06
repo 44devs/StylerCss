@@ -1,107 +1,105 @@
 .save-btn {
   position: relative;
 
-  display: inline-flex;
+  width: 58px;
+  height: 52px;
+
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
- 
-  min-width: 112px;
-  height: 48px;
 
-  padding: 0 17px;
-
+  padding: 0;
   border: none;
-  border-radius: 14px;
+  border-radius: 15px;
 
   background: #212121;
-  color: #fff;
-
-  font-family: inherit;
-  font-size: 17px;
-  font-weight: 800;
+  color: white;
 
   cursor: pointer;
 
   overflow: hidden;
 
   transition:
+    width 0.35s cubic-bezier(.34, 1.56, .64, 1),
     background 0.25s ease,
-    transform 0.15s ease;
+    transform 0.15s ease,
+    box-shadow 0.25s ease;
 }
 
-.save-btn:hover {
-  background: #000;
+.icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    transform 0.35s cubic-bezier(.34, 1.56, .64, 1),
+    margin 0.35s ease;
+}
+
+.icon {
+  fill: #aaa;
+
+  transform-origin: center;
+
+  transition:
+    width 0.35s ease,
+    height 0.35s ease,
+    fill 0.25s ease,
+    transform 0.35s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.saved-text {
+  position: absolute;
+
+  left: 34px;
+
+  font-size: 16px;
+  font-weight: 800;
+
+  opacity: 0;
+  transform: translateX(8px);
+
+  transition:
+    opacity 0.2s ease 0.1s,
+    transform 0.35s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@media (hover: hover) {
+  .save-btn:hover {
+    transform: translateY(-3px);
+
+    background: #000;
+
+    box-shadow:
+      0 7px 14px rgba(0, 0, 0, 0.2);
+  }
+
+  .save-btn:hover .icon {
+    fill: #fff;
+  }
 }
 
 .save-btn:active {
   transform: scale(0.94);
 }
 
-.save-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  transition:
-    transform 0.35s cubic-bezier(.34, 1.56, .64, 1),
-    opacity 0.2s ease;
+.save-btn.saved {
+  width: 112px;
+  background: #212121;
 }
 
-.save-icon svg {
-  fill: #aaa;
-  transition: fill 0.25s ease;
+.save-btn.saved .icon-wrap {
+  transform: translateX(-25px);
 }
 
-.save-btn:hover .save-icon {
-  transform: translateY(-2px);
-}
-
-.save-btn:hover .save-icon svg {
+.save-btn.saved .icon {
+  width: 20px;
+  height: 20px;
   fill: #fff;
 }
 
-.save-text {
-  transition:
-    transform 0.35s cubic-bezier(.34, 1.56, .64, 1),
-    opacity 0.2s ease;
-}
-
-.save-check {
-  position: absolute;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 21px;
-  font-weight: 900;
-
-  color: #fff;
-
-  opacity: 0;
-  transform: scale(0.4) rotate(-20deg);
-
-  transition:
-    opacity 0.2s ease,
-    transform 0.35s cubic-bezier(.34, 1.56, .64, 1);
-}
-
-.save-btn.saved {
-  background: #7657d9;
-}
-
-.save-btn.saved .save-icon {
-  opacity: 0;
-  transform: scale(0.3) rotate(20deg);
-}
-
-.save-btn.saved .save-text {
-  opacity: 0;
-  transform: translateX(10px);
-}
-
-.save-btn.saved .save-check {
+.save-btn.saved .saved-text {
   opacity: 1;
-  transform: scale(1) rotate(0);
+  transform: translateX(0);
 }
+
