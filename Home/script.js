@@ -44,7 +44,7 @@ const sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a6.9 6.9 0 1 0 11.3 11.3Z"/></svg>';
 
 async function fetchFileList() {
-  const res = await fetch("https://data.jsdelivr.com/v1/package/gh/" + CONFIG.owner + "/" + CONFIG.repo + "@" + CONFIG.branch + "/flat");
+  const res = await fetch("https://data.jsdelivr.com/v1/package/gh/" + CONFIG.owner + "/" + CONFIG.repo + "@" + CONFIG.branch + "/flat?t=" + Date.now());
   if (!res.ok) throw new Error("Cannot fetch file list");
   const data = await res.json();
   return data.files.map(function (f) { return f.name; });
