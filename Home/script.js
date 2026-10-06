@@ -313,7 +313,7 @@ function openModal(item) {
     const oldScript = mstage.querySelector("script");
     if (oldScript) oldScript.remove();
     const script = document.createElement("script");
-    script.textContent = item.js;
+    script.textContent = "(function(){\n" + item.js + "\n})();";
     mstage.appendChild(script);
   }
 }
