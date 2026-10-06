@@ -15,6 +15,9 @@ const CONFIG = {
   jsExtensions: [".js"]
 };
 
+const CACHE_KEY = "stylercss_files_cache";
+const CACHE_MAX_AGE = 1000 * 60 * 30;
+
 const grid = document.getElementById("grid");
 const q = document.getElementById("q");
 const filters = document.getElementById("filters");
@@ -44,10 +47,28 @@ const sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a6.9 6.9 0 1 0 11.3 11.3Z"/></svg>';
 
 async function fetchFileList() {
-  const res = await fetch("https://data.jsdelivr.com/v1/package/gh/" + CONFIG.owner + "/" + CONFIG.repo + "@" + CONFIG.branch + "/flat?t=" + Date.now());
-  if (!res.ok) throw new Error("Cannot fetch file list");
-  const data = await res.json();
-  return data.files.map(function (f) { return f.name; });
+  const url = "https://api.github.com/repos/" + CONFIG.owner + "/" + CONFIG.repo + "/git/trees/" + CONFIG.branch + "?recursive=1";
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("API " + res.status);
+    const data = await res.json();
+    const files = data.tree
+      .filter(function (item) { return item.type === "blob"; })
+      .map(function (item) { return "/" + item.path; });
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), files: files }));
+    } catch (e) {}
+    return files;
+  } catch (e) {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return parsed.files;
+      }
+    } catch (err) {}
+    throw e;
+  }
 }
 
 async function fetchText(url) {
@@ -70,21 +91,23 @@ async function loadComponents() {
   try {
     allFiles = await fetchFileList();
   } catch (e) {
-    console.error("Could not reach jsDelivr:", e);
+    console.error("Could not fetch file list:", e);
     return;
   }
+
+  const baseUrl = "https://cdn.jsdelivr.net/gh/" + CONFIG.owner + "/" + CONFIG.repo + "@" + CONFIG.branch;
 
   for (const cat of CONFIG.categories) {
     const prefix = "/" + CONFIG.root + "/" + cat.folder + "/";
     const catFiles = allFiles.filter(function (f) {
-      return f.indexOf(prefix) === 0 && f.indexOf("/", prefix.length) > -1;
+      return f.indexOf(prefix) === 0;
     });
 
     const folderMap = {};
     for (const file of catFiles) {
       const relative = file.substring(prefix.length);
       const parts = relative.split("/");
-      if (parts.length < 2) continue;
+      if (parts.length !== 2) continue;
       const folderName = parts[0];
       const fileName = parts[1];
       if (!folderMap[folderName]) folderMap[folderName] = [];
@@ -97,12 +120,14 @@ async function loadComponents() {
       const cssFile = files.find(function (f) { return CONFIG.cssExtensions.some(function (e) { return f.toLowerCase().endsWith(e); }); });
       const jsFile = files.find(function (f) { return CONFIG.jsExtensions.some(function (e) { return f.toLowerCase().endsWith(e); }); });
 
-      const baseUrl = "https://cdn.jsdelivr.net/gh/" + CONFIG.owner + "/" + CONFIG.repo + "@" + CONFIG.branch + "/" + CONFIG.root + "/" + cat.folder + "/" + folderName + "/";
+      if (!htmlFile) continue;
+
+      const folderUrl = baseUrl + "/" + CONFIG.root + "/" + cat.folder + "/" + folderName + "/";
 
       let html = "";
       let inlineCss = "";
-      if (htmlFile) {
-        const rawHtml = await fetchText(baseUrl + htmlFile);
+      try {
+        const rawHtml = await fetchText(folderUrl + htmlFile);
         const cleaned = cleanHtml(rawHtml);
         if (typeof cleaned === "object") {
           html = cleaned.html;
@@ -110,11 +135,16 @@ async function loadComponents() {
         } else {
           html = cleaned;
         }
+      } catch (e) {
+        console.error("Failed to load HTML for " + folderName, e);
+        continue;
       }
 
       let css = "";
       if (cssFile) {
-        css = (await fetchText(baseUrl + cssFile)).trim();
+        try {
+          css = (await fetchText(folderUrl + cssFile)).trim();
+        } catch (e) {}
       }
       if (inlineCss) {
         css = (css ? css + "\n\n" : "") + inlineCss;
@@ -122,7 +152,9 @@ async function loadComponents() {
 
       let js = "";
       if (jsFile) {
-        js = (await fetchText(baseUrl + jsFile)).trim();
+        try {
+          js = (await fetchText(folderUrl + jsFile)).trim();
+        } catch (e) {}
       }
 
       components.push({
