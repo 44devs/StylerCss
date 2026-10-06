@@ -1,0 +1,107 @@
+.save-btn {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  min-width: 112px;
+  height: 48px;
+
+  padding: 0 17px;
+
+  border: none;
+  border-radius: 14px;
+
+  background: #212121;
+  color: #fff;
+
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  overflow: hidden;
+
+  transition:
+    background 0.25s ease,
+    transform 0.15s ease;
+}
+
+.save-btn:hover {
+  background: #000;
+}
+
+.save-btn:active {
+  transform: scale(0.94);
+}
+
+.save-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    transform 0.35s cubic-bezier(.34, 1.56, .64, 1),
+    opacity 0.2s ease;
+}
+
+.save-icon svg {
+  fill: #aaa;
+  transition: fill 0.25s ease;
+}
+
+.save-btn:hover .save-icon {
+  transform: translateY(-2px);
+}
+
+.save-btn:hover .save-icon svg {
+  fill: #fff;
+}
+
+.save-text {
+  transition:
+    transform 0.35s cubic-bezier(.34, 1.56, .64, 1),
+    opacity 0.2s ease;
+}
+
+.save-check {
+  position: absolute;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 21px;
+  font-weight: 900;
+
+  color: #fff;
+
+  opacity: 0;
+  transform: scale(0.4) rotate(-20deg);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.35s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.save-btn.saved {
+  background: #7657d9;
+}
+
+.save-btn.saved .save-icon {
+  opacity: 0;
+  transform: scale(0.3) rotate(20deg);
+}
+
+.save-btn.saved .save-text {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+.save-btn.saved .save-check {
+  opacity: 1;
+  transform: scale(1) rotate(0);
+}
